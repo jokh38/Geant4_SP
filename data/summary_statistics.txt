@@ -1,0 +1,25 @@
+Stopping Power Summary Statistics
+================================================================================
+
+Total data points: 447
+Energy range: 0.10 - 249.60 MeV
+
+Total Stopping Power (dE/dx):
+  Maximum: 632.3787 MeV/cm at 0.10 MeV
+  Minimum: 2.9045 MeV/cm at 249.60 MeV
+  Average: 27.0438 MeV/cm
+
+Mass Stopping Power:
+  Maximum: 632.3787 MeV·cm²/g
+  Minimum: 2.9045 MeV·cm²/g
+  Average: 27.0438 MeV·cm²/g
+
+Sample Data Points:
+--------------------------------------------------------------------------------
+   Energy (MeV)      dE/dx (MeV/cm)               Mass dE/dx
+--------------------------------------------------------------------------------
+           0.10            632.3787                 632.3787
+           0.50            317.6262                 317.6262
+           1.00            200.0865                 200.0865
+           5.00             59.4496                  59.4496
+          10.00             34.0930                  34.0930

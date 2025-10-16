@@ -1,0 +1,149 @@
+네, Geant4의 물리 모델을 사용하여 저지능 데이터를 직접 추출하는 것은 매우 좋은 방법이며, 시뮬레이션 코드 간의 일관성을 확보하는 데 유리합니다. Geant4는 전체 시뮬레이션을 실행하지 않고도 특정 물리량(예: 저지능, 단면적)을 계산할 수 있는 유틸리티 클래스인 `G4EmCalculator`를 제공합니다.
+
+아래에 Geant4를 사용하여 양성자의 물 저지능 데이터를 추출하는 절차와 구체적인 C++ 코드 예제를 단계별로 설명해 드리겠습니다.
+
+### 데이터 추출 절차 요약
+
+1.  **Geant4 환경 설정**: Geant4 툴킷이 설치되어 있어야 합니다.
+2.  **물리 리스트(Physics List) 선택**: 계산에 사용할 물리 모델의 조합을 결정합니다. 양성자 치료와 같은 의료 물리 분야에서는 검증된 표준 물리 리스트를 사용하는 것이 중요합니다.
+3.  **C++ 애플리케이션 작성**: `G4EmCalculator`를 사용하여 원하는 입자, 물질, 에너지에 대한 저지능 값을 계산하고 출력하는 간단한 C++ 프로그램을 작성합니다.
+4.  **컴파일 및 실행**: 작성한 프로그램을 Geant4 라이브러리와 링크하여 컴파일하고 실행하여 데이터를 추출합니다.
+
+-----
+
+### 단계별 상세 가이드 및 코드 예제
+
+#### 1단계: 적절한 물리 리스트 선택하기
+
+계산 결과는 어떤 물리 모델을 사용하느냐에 따라 달라지므로, 목적에 맞는 물리 리스트를 선택하는 것이 가장 중요합니다. 양성자 치료 시뮬레이션의 경우, 다음과 같은 표준 물리 리스트들이 널리 권장됩니다.
+
+  * **`FTFP_BERT`**: Geant4 10.0 버전 이후의 기본 물리 리스트로, 다양한 에너지 영역에서 잘 동작하여 많은 분야에서 표준으로 사용됩니다.[1]
+  * **`QGSP_BIC_HP`**: 저에너지 중성자 수송의 정밀도가 높아 방사선 방호 및 의료 분야에서 자주 사용됩니다.[2, 3]
+  * **전자기(EM) 물리 옵션**: 더 정확한 브래그 피크(Bragg peak) 계산을 위해 표준 EM 물리 리스트에 `_EMZ` 또는 `_EMY` 옵션을 추가하거나, `G4EmStandardPhysics_option3` 또는 `_option4`와 같은 고정밀도 옵션을 사용하는 것이 권장됩니다.[4]
+
+이 예제에서는 `FTFP_BERT`를 기반으로 하되, 정밀도를 높이기 위해 `G4EmStandardPhysics_option4`를 추가하는 방식을 사용하겠습니다.
+
+#### 2단계: 저지능 추출을 위한 C++ 코드 작성
+
+아래는 특정 에너지 범위에 대해 양성자의 물에 대한 총 저지능(Total Stopping Power, dE/dx)을 계산하고 출력하는 C++ 코드 예제입니다. 이 코드는 Geant4의 공식 예제 중 하나인 `TestEm0`의 구조를 참고하여 단순화한 것입니다.[5, 6, 7]
+
+`get_stopping_power.cc`
+
+```cpp
+#include "G4RunManager.hh"
+#include "G4NistManager.hh"
+#include "G4PhysListFactory.hh"
+#include "G4VModularPhysicsList.hh"
+#include "G4EmStandardPhysics_option4.hh"
+#include "G4ParticleTable.hh"
+#include "G4ParticleDefinition.hh"
+#include "G4EmCalculator.hh"
+#include "G4UnitsTable.hh"
+
+#include <vector>
+#include <iostream>
+#include <iomanip>
+
+int main() {
+    // 1. Geant4 실행 관리자(RunManager) 생성
+    G4RunManager* runManager = new G4RunManager;
+
+    // 2. 물리 리스트 설정 (가장 중요한 부분)
+    G4PhysListFactory factory;
+    G4VModularPhysicsList* physList = factory.GetReferencePhysList("FTFP_BERT");
+    physList->ReplacePhysics(new G4EmStandardPhysics_option4()); // 고정밀도 EM 물리 모델로 교체
+    runManager->SetUserInitialization(physList);
+
+    // 3. RunManager 초기화 (물리 테이블 생성)
+    runManager->Initialize();
+
+    // 4. 계산에 필요한 입자와 물질 정의
+    G4ParticleDefinition* particle = G4ParticleTable::GetParticleTable()->FindParticle("proton");
+    G4Material* material = G4NistManager::GetPointer()->FindOrBuildMaterial("G4_WATER");
+
+    if (!particle ||!material) {
+        std::cerr << "Error: Particle or material not found." << std::endl;
+        delete runManager;
+        return 1;
+    }
+
+    // 5. G4EmCalculator 인스턴스 생성
+    G4EmCalculator emCalculator;
+
+    // 6. 저지능을 계산할 에너지 범위 설정
+    std::vector<G4double> energies;
+    for (double e = 0.5; e <= 250.0; e += 0.5) {
+        if (e > 50.0 && e <= 100.0) e += 0.5; // 50~100 MeV 구간은 1 MeV 간격
+        if (e > 100.0) e += 4.0; // 100 MeV 이상은 5 MeV 간격
+        energies.push_back(e * CLHEP::MeV);
+    }
+
+    // 7. 결과 출력 헤더
+    std::cout << std::setw(15) << "Energy (MeV)"
+              << std::setw(25) << "Total dE/dx (MeV/cm)"
+              << std::setw(30) << "Total Mass dE/dx (MeV cm^2/g)"
+              << std::endl;
+    std::cout << "------------------------------------------------------------------" << std::endl;
+
+    // 8. 각 에너지에 대해 저지능 계산 및 출력
+    for (G4double energy : energies) {
+        // 총 저지능(dE/dx) 계산 (단위: MeV/mm)
+        G4double totalDEDX = emCalculator.ComputeTotalDEDX(energy, particle, material);
+
+        // 질량 저지능 계산
+        G4double massDEDX = totalDEDX / material->GetDensity();
+
+        std::cout << std::fixed << std::setprecision(4)
+                  << std::setw(15) << energy / CLHEP::MeV
+                  << std::setw(25) << totalDEDX / (CLHEP::MeV / CLHEP::cm)
+                  << std::setw(30) << massDEDX / (CLHEP::MeV * CLHEP::cm2 / CLHEP::g)
+                  << std::endl;
+    }
+
+    // 9. 메모리 해제
+    delete runManager;
+    return 0;
+}
+```
+
+#### 3단계: 컴파일 및 실행
+
+이 코드를 컴파일하려면 Geant4 환경 변수가 설정된 터미널에서 `CMake`를 사용해야 합니다.
+
+1.  **`CMakeLists.txt` 파일 작성**:
+
+    ```cmake
+    cmake_minimum_required(VERSION 3.8)
+    project(GetStoppingPower)
+
+    find_package(Geant4 REQUIRED)
+
+    include(${Geant4_USE_FILE})
+
+    add_executable(get_stopping_power get_stopping_power.cc)
+    target_link_libraries(get_stopping_power ${Geant4_LIBRARIES})
+    ```
+
+2.  **컴파일**:
+
+    ```bash
+    # Geant4 환경 설정 스크립트 실행 (설치 경로에 따라 다름)
+    source /path/to/your/geant4-install/bin/geant4.sh
+
+    # 빌드 디렉토리 생성 및 이동
+    mkdir build
+    cd build
+
+    # CMake 실행 및 빌드
+    cmake..
+    make
+    ```
+
+3.  **실행**:
+
+    ```bash
+    ```
+
+./get\_stopping\_power \> water\_stopping\_power.txt
+\`\`\`
+위 명령을 실행하면 `water_stopping_power.txt` 파일에 양성자의 물 저지능 데이터가 표 형태로 저장됩니다. 이 데이터를 코드의 새 테이블로 직접 사용할 수 있습니다. 이 방법은 NIST PSTAR나 ICRU 보고서의 데이터를 사용하는 것과 더불어, 사용 중인 Geant4 버전의 물리 모델과 완벽하게 일치하는 데이터를 얻을 수 있다는 큰 장점이 있습니다.[8]
