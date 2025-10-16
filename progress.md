@@ -76,30 +76,61 @@ Python implementation of stopping power calculations for charged particles based
   - Installation and setup instructions
   - Sample data and validation results
 
+### Phase 1.5: Multiple Physics Models ✓
+- **Status**: Implemented and tested
+- **Location**: `src/physics_models.py`
+- **Features**:
+  - Modular physics model architecture
+  - Support for FTFP_BERT (standard G4EmStandardPhysics with ICRU73)
+  - Support for EM_option4 (G4EmStandardPhysics_option4 with ICRU90)
+  - Model-specific correction factors for different energy ranges
+  - Energy-dependent corrections (shell, Barkas, Bloch, density effects)
+  - Model registry for extensibility
+- **Tests**: Added 5 new tests for physics model functionality
+  - `test_ftfp_bert_model_selection`
+  - `test_em_option4_model_selection`
+  - `test_different_models_produce_different_results`
+  - `test_models_differ_at_low_energy`
+  - `test_batch_calculation_respects_model`
+
 ### Test Coverage
-- **Total Tests**: 7
-- **Passing**: 7 (100%)
+- **Total Tests**: 12
+- **Passing**: 12 (100%)
 - **Test File**: `tests/test_stopping_power.py`
 
 ### Generated Data Files
 - **Total Data Points**: 447 (0.1 - 249.6 MeV)
-- **Output Formats**:
-  - Geant4-style TXT (34 KB)
-  - CSV format (13 KB)
-  - Statistical summary
+- **Physics Models**:
+  - FTFP_BERT model data files
+  - EM_option4 model data files
+- **Output Formats** (per model):
+  - Geant4-style TXT (34 KB) - `proton_water_FTFP_BERT.txt`, `proton_water_EM_option4.txt`
+  - CSV format (13 KB) - `proton_water_FTFP_BERT.csv`, `proton_water_EM_option4.csv`
+  - Statistical summary - `summary_statistics_FTFP_BERT.txt`, `summary_statistics_EM_option4.txt`
 - **Visualization Plots**:
   - Multi-panel analysis (4 subplots, 386 KB PNG)
   - Comparison plot with energy regions (258 KB PNG)
 
 ### Physics Validation
-- **Formula**: Bethe-Bloch stopping power calculation
+- **Formula**: Bethe-Bloch stopping power calculation with model-specific corrections
 - **Behavior**: Correctly demonstrates stopping power decrease with increasing energy
 - **Sample Results** (Protons in Water):
-  - 1 MeV: ~200 MeV/cm
-  - 10 MeV: ~34 MeV/cm
-  - 50 MeV: ~9.2 MeV/cm
-  - 100 MeV: ~5.4 MeV/cm
-  - 200 MeV: ~3.3 MeV/cm
+
+**FTFP_BERT Model**:
+  - 0.1 MeV: 648.4 MeV/cm
+  - 1 MeV: 202.8 MeV/cm
+  - 10 MeV: 33.8 MeV/cm
+  - 50 MeV: 9.2 MeV/cm
+  - 100 MeV: 5.4 MeV/cm
+
+**EM_option4 Model**:
+  - 0.1 MeV: 672.4 MeV/cm (3.7% higher than FTFP_BERT)
+  - 1 MeV: 206.8 MeV/cm (2.0% higher)
+  - 10 MeV: 33.1 MeV/cm (2.1% lower)
+  - 50 MeV: 9.1 MeV/cm (1.1% lower)
+  - 100 MeV: 5.4 MeV/cm (similar at high energy)
+
+**Model Differences**: EM_option4 shows higher stopping power at low energies (ICRU90 data) and slightly lower stopping power at mid-range energies (enhanced corrections)
 
 ## Current Work
 - All Phase 1 features completed
@@ -148,6 +179,26 @@ Python implementation of stopping power calculations for charged particles based
 ## Changelog
 
 ### 2025-10-16
+
+#### Multiple Physics Models Support (Phase 1.5)
+- Created `src/physics_models.py` module for modular physics model architecture
+- Implemented FTFP_BERT model (standard G4EmStandardPhysics with ICRU73 data)
+- Implemented EM_option4 model (G4EmStandardPhysics_option4 with ICRU90 data)
+- Added model-specific correction factors for different energy ranges:
+  - Low energy (< 2 MeV): ICRU data corrections
+  - Mid energy (2-10 MeV): Shell and Barkas corrections
+  - High energy (> 10 MeV): Density effect corrections
+- Updated StoppingPowerCalculator to use physics model instances
+- Added 5 new tests for physics model functionality (12 tests total, 100% passing)
+- Updated generate_data.py to support multiple models via command-line arguments:
+  - `--model FTFP_BERT` or `--model EM_option4` for single model
+  - `--all` for generating all models (default behavior)
+- Generated separate data files for each model with appropriate naming:
+  - `proton_water_FTFP_BERT.txt/csv`
+  - `proton_water_EM_option4.txt/csv`
+  - `summary_statistics_FTFP_BERT.txt`
+  - `summary_statistics_EM_option4.txt`
+- Verified model differences: EM_option4 shows 2-4% differences at low/mid energies
 
 #### Core Implementation
 - Initial implementation of EnergyRange class with variable step sizes

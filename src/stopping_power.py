@@ -7,6 +7,7 @@ This module implements stopping power calculations for charged particles
 
 import numpy as np
 from typing import List, Dict, Tuple, Optional
+from src.physics_models import get_physics_model
 
 
 class EnergyRange:
@@ -103,6 +104,9 @@ class StoppingPowerCalculator:
         self.material = material
         self.physics_model = physics_model
 
+        # Get physics model implementation
+        self.model = get_physics_model(physics_model)
+
         # Set particle properties
         if particle == "proton":
             self.particle_mass = self.PROTON_MASS
@@ -154,6 +158,10 @@ class StoppingPowerCalculator:
 
         dedx_mass = K * z_squared * (self.Z / self.A) * (1 / beta**2) * \
                     (0.5 * ln_term - beta**2)
+
+        # Apply physics model-specific correction factor
+        correction = self.model.get_correction_factor(energy_mev)
+        dedx_mass = dedx_mass * correction
 
         # Convert from MeV cm^2/g to MeV/cm
         dedx = dedx_mass * self.density

@@ -105,3 +105,79 @@ class TestStoppingPowerCalculator:
 
         # At low energies, stopping power is generally higher
         assert low_energy_dedx > high_energy_dedx
+
+    def test_ftfp_bert_model_selection(self):
+        """Test that FTFP_BERT model can be selected."""
+        calc = StoppingPowerCalculator(
+            particle="proton",
+            material="water",
+            physics_model="FTFP_BERT"
+        )
+        assert calc.physics_model == "FTFP_BERT"
+
+    def test_em_option4_model_selection(self):
+        """Test that EM_option4 model can be selected."""
+        calc = StoppingPowerCalculator(
+            particle="proton",
+            material="water",
+            physics_model="EM_option4"
+        )
+        assert calc.physics_model == "EM_option4"
+
+    def test_different_models_produce_different_results(self):
+        """Test that different physics models produce different stopping power values."""
+        energy = 50.0  # MeV, mid-range energy where differences should be visible
+
+        calc_ftfp = StoppingPowerCalculator(
+            particle="proton",
+            material="water",
+            physics_model="FTFP_BERT"
+        )
+        calc_em = StoppingPowerCalculator(
+            particle="proton",
+            material="water",
+            physics_model="EM_option4"
+        )
+
+        dedx_ftfp = calc_ftfp.compute_dedx(energy)
+        dedx_em = calc_em.compute_dedx(energy)
+
+        # Different models should produce different results
+        # EM_option4 uses ICRU90 data which is more accurate
+        assert dedx_ftfp != dedx_em, "Different physics models should produce different results"
+
+        # Both should still be positive and reasonable
+        assert dedx_ftfp > 0
+        assert dedx_em > 0
+
+    def test_models_differ_at_low_energy(self):
+        """Test that model differences are significant at low energies (< 2 MeV)."""
+        energy = 1.0  # MeV, below 2 MeV transition point
+
+        calc_ftfp = StoppingPowerCalculator(physics_model="FTFP_BERT")
+        calc_em = StoppingPowerCalculator(physics_model="EM_option4")
+
+        dedx_ftfp = calc_ftfp.compute_dedx(energy)
+        dedx_em = calc_em.compute_dedx(energy)
+
+        # Models should differ at low energies where NIST/ICRU data is used
+        relative_diff = abs(dedx_ftfp - dedx_em) / dedx_ftfp
+        assert relative_diff > 0.001, "Models should show measurable difference at low energies"
+
+    def test_batch_calculation_respects_model(self):
+        """Test that batch calculations use the selected physics model."""
+        energies = [1.0, 10.0, 50.0, 100.0]
+
+        calc_ftfp = StoppingPowerCalculator(physics_model="FTFP_BERT")
+        calc_em = StoppingPowerCalculator(physics_model="EM_option4")
+
+        results_ftfp = calc_ftfp.compute_batch(energies)
+        results_em = calc_em.compute_batch(energies)
+
+        # At least some energies should show different results
+        differences = [
+            abs(r_ftfp['dedx'] - r_em['dedx'])
+            for r_ftfp, r_em in zip(results_ftfp, results_em)
+        ]
+
+        assert any(diff > 0 for diff in differences), "Batch calculations should respect physics model"

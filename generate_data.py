@@ -4,23 +4,36 @@ Generate stopping power data for protons in water.
 
 This script uses the StoppingPowerCalculator to generate comprehensive
 stopping power data and saves it in multiple formats.
+
+Supports multiple physics models: FTFP_BERT and EM_option4
 """
 
 import sys
 import csv
+import argparse
 from pathlib import Path
 
 # Add src to path
 sys.path.insert(0, str(Path(__file__).parent))
 
 from src.stopping_power import StoppingPowerCalculator, EnergyRange
+from src.physics_models import list_available_models
 
 
-def generate_proton_water_data():
-    """Generate proton stopping power data in water."""
+def generate_proton_water_data(physics_model="FTFP_BERT"):
+    """
+    Generate proton stopping power data in water.
+
+    Args:
+        physics_model: Physics model to use (default: "FTFP_BERT")
+
+    Returns:
+        Tuple of (calculator, results)
+    """
 
     print("Geant4 Stopping Power Calculator")
     print("=" * 80)
+    print(f"Physics Model: {physics_model}")
     print("Generating proton stopping power data in water...")
     print()
 
@@ -28,7 +41,7 @@ def generate_proton_water_data():
     calc = StoppingPowerCalculator(
         particle="proton",
         material="water",
-        physics_model="FTFP_BERT"
+        physics_model=physics_model
     )
 
     # Generate energy range with variable step sizes
@@ -57,9 +70,19 @@ def generate_proton_water_data():
     return calc, results
 
 
-def save_geant4_format(calc, results, filename="data/proton_water_stopping_power.txt"):
-    """Save data in Geant4-style format."""
+def save_geant4_format(calc, results, model_name=None):
+    """
+    Save data in Geant4-style format.
 
+    Args:
+        calc: StoppingPowerCalculator instance
+        results: List of calculation results
+        model_name: Physics model name (optional, uses calc.physics_model if None)
+    """
+    if model_name is None:
+        model_name = calc.physics_model
+
+    filename = f"data/proton_water_{model_name}.txt"
     Path(filename).parent.mkdir(parents=True, exist_ok=True)
 
     with open(filename, 'w') as f:
@@ -81,11 +104,18 @@ def save_geant4_format(calc, results, filename="data/proton_water_stopping_power
         f.write("\n")
 
     print(f"✓ Saved Geant4-style format: {filename}")
+    return filename
 
 
-def save_csv_format(results, filename="data/proton_water_stopping_power.csv"):
-    """Save data in CSV format."""
+def save_csv_format(results, model_name):
+    """
+    Save data in CSV format.
 
+    Args:
+        results: List of calculation results
+        model_name: Physics model name for filename
+    """
+    filename = f"data/proton_water_{model_name}.csv"
     Path(filename).parent.mkdir(parents=True, exist_ok=True)
 
     with open(filename, 'w', newline='') as f:
@@ -108,11 +138,19 @@ def save_csv_format(results, filename="data/proton_water_stopping_power.csv"):
                 ])
 
     print(f"✓ Saved CSV format: {filename}")
+    return filename
 
 
-def save_summary_statistics(results, filename="data/summary_statistics.txt"):
-    """Save summary statistics."""
+def save_summary_statistics(calc, results, model_name):
+    """
+    Save summary statistics.
 
+    Args:
+        calc: StoppingPowerCalculator instance
+        results: List of calculation results
+        model_name: Physics model name for filename
+    """
+    filename = f"data/summary_statistics_{model_name}.txt"
     Path(filename).parent.mkdir(parents=True, exist_ok=True)
 
     # Calculate statistics
@@ -127,6 +165,7 @@ def save_summary_statistics(results, filename="data/summary_statistics.txt"):
         f.write("Stopping Power Summary Statistics\n")
         f.write("=" * 80 + "\n\n")
 
+        f.write(f"Physics Model: {calc.physics_model}\n")
         f.write(f"Total data points: {len(results)}\n")
         f.write(f"Energy range: {energies[0]:.2f} - {energies[-1]:.2f} MeV\n\n")
 
@@ -154,6 +193,7 @@ def save_summary_statistics(results, filename="data/summary_statistics.txt"):
                     break
 
     print(f"✓ Saved summary statistics: {filename}")
+    return filename
 
 
 def print_sample_data(results):
@@ -180,24 +220,60 @@ def print_sample_data(results):
 def main():
     """Main execution function."""
 
+    # Parse command-line arguments
+    parser = argparse.ArgumentParser(
+        description="Generate Geant4 stopping power data for protons in water"
+    )
+    parser.add_argument(
+        "--model",
+        choices=list_available_models(),
+        help="Physics model to use (default: all models)"
+    )
+    parser.add_argument(
+        "--all",
+        action="store_true",
+        help="Generate data for all available physics models"
+    )
+
+    args = parser.parse_args()
+
+    # Determine which models to run
+    if args.model:
+        models = [args.model]
+    elif args.all:
+        models = list_available_models()
+    else:
+        # Default: generate for all models
+        models = list_available_models()
+
+    all_output_files = []
+
     try:
-        # Generate data
-        calc, results = generate_proton_water_data()
+        for model in models:
+            print(f"\n{'=' * 80}")
+            print(f"Processing physics model: {model}")
+            print(f"{'=' * 80}\n")
 
-        # Save in multiple formats
-        print("Saving data files...")
-        save_geant4_format(calc, results)
-        save_csv_format(results)
-        save_summary_statistics(results)
+            # Generate data
+            calc, results = generate_proton_water_data(physics_model=model)
 
-        # Print sample to console
-        print_sample_data(results)
+            # Save in multiple formats
+            print("Saving data files...")
+            txt_file = save_geant4_format(calc, results, model)
+            csv_file = save_csv_format(results, model)
+            stats_file = save_summary_statistics(calc, results, model)
 
-        print("\n✓ Data generation complete!")
-        print("\nOutput files:")
-        print("  - data/proton_water_stopping_power.txt (Geant4 format)")
-        print("  - data/proton_water_stopping_power.csv (CSV format)")
-        print("  - data/summary_statistics.txt (Statistics)")
+            all_output_files.extend([txt_file, csv_file, stats_file])
+
+            # Print sample to console
+            print_sample_data(results)
+
+        print(f"\n{'=' * 80}")
+        print("✓ Data generation complete!")
+        print(f"{'=' * 80}\n")
+        print("Generated files:")
+        for filepath in all_output_files:
+            print(f"  - {filepath}")
 
     except Exception as e:
         print(f"\n✗ Error: {e}", file=sys.stderr)

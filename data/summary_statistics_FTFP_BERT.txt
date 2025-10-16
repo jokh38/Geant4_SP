@@ -1,0 +1,26 @@
+Stopping Power Summary Statistics
+================================================================================
+
+Physics Model: FTFP_BERT
+Total data points: 447
+Energy range: 0.10 - 249.60 MeV
+
+Total Stopping Power (dE/dx):
+  Maximum: 648.3989 MeV/cm at 0.10 MeV
+  Minimum: 2.9045 MeV/cm at 249.60 MeV
+  Average: 27.1837 MeV/cm
+
+Mass Stopping Power:
+  Maximum: 648.3989 MeV·cm²/g
+  Minimum: 2.9045 MeV·cm²/g
+  Average: 27.1837 MeV·cm²/g
+
+Sample Data Points:
+--------------------------------------------------------------------------------
+   Energy (MeV)      dE/dx (MeV/cm)               Mass dE/dx
+--------------------------------------------------------------------------------
+           0.10            648.3989                 648.3989
+           0.50            323.9788                 323.9788
+           1.00            202.7543                 202.7543
+           5.00             59.2266                  59.2266
+          10.00             33.7521                  33.7521
