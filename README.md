@@ -9,9 +9,10 @@ This project computes stopping power (dE/dx) for charged particles (primarily pr
 ## Features
 
 - **Accurate Physics Calculations**: Implements Bethe-Bloch formula for stopping power
+- **Multiple Physics Models**: Support for FTFP_BERT and EM_option4 (ICRU73 vs ICRU90)
 - **Variable Energy Resolution**: Finer granularity at low energies (0.1-10 MeV)
 - **Multiple Output Formats**: Geant4-style text, CSV, and statistical summaries
-- **Data Visualization**: Comprehensive plots showing stopping power behavior
+- **Advanced Data Visualization**: Model-specific plots and multi-model comparison plots
 - **Test-Driven Development**: 100% test coverage with pytest
 
 ## Installation
@@ -48,41 +49,66 @@ python3 -m pytest tests/test_stopping_power.py --cov=src --cov-report=html
 ### 2. Generate Data
 
 ```bash
-# Generate stopping power data for protons in water
+# Generate data for all available physics models (default)
 python3 generate_data.py
+
+# Generate data for a specific physics model
+python3 generate_data.py --model FTFP_BERT
+python3 generate_data.py --model EM_option4
+
+# Explicitly generate for all models
+python3 generate_data.py --all
 ```
 
-This creates:
-- `data/proton_water_stopping_power.txt` - Geant4-style formatted table
-- `data/proton_water_stopping_power.csv` - CSV format for analysis
-- `data/summary_statistics.txt` - Statistical summary
+This creates (per model):
+- `data/proton_water_<MODEL>.txt` - Geant4-style formatted table
+- `data/proton_water_<MODEL>.csv` - CSV format for analysis
+- `data/summary_statistics_<MODEL>.txt` - Statistical summary
 
 ### 3. Visualize Data
 
 ```bash
-# Create visualization plots
+# Create plots for all available models (default)
 python3 plot_data.py
+
+# Create plots for a specific model
+python3 plot_data.py --model FTFP_BERT
+
+# Create only comparison plots (no individual model plots)
+python3 plot_data.py --compare
+
+# Explicitly plot all models
+python3 plot_data.py --all
 ```
 
 This creates:
-- `plots/stopping_power_multi_panel.png` - Four-panel analysis plot
-- `plots/stopping_power_comparison.png` - Comprehensive comparison plot
+- `plots/stopping_power_<MODEL>_multi_panel.png` - Four-panel analysis per model
+- `plots/stopping_power_<MODEL>_features.png` - Feature visualization per model
+- `plots/stopping_power_models_comparison.png` - Multi-model comparison plot (when multiple models available)
 
 ## Project Structure
 
 ```
 Geant4_SP/
 ├── src/
-│   └── stopping_power.py       # Core implementation
+│   ├── stopping_power.py       # Core stopping power implementation
+│   └── physics_models.py       # Physics model definitions
 ├── tests/
-│   └── test_stopping_power.py  # Unit tests
-├── data/                        # Generated data files
-│   ├── proton_water_stopping_power.txt
-│   ├── proton_water_stopping_power.csv
-│   └── summary_statistics.txt
+│   ├── test_stopping_power.py  # Unit tests for stopping power
+│   └── test_plotting.py        # Unit tests for plotting
+├── data/                        # Generated data files (per model)
+│   ├── proton_water_FTFP_BERT.txt
+│   ├── proton_water_FTFP_BERT.csv
+│   ├── summary_statistics_FTFP_BERT.txt
+│   ├── proton_water_EM_option4.txt
+│   ├── proton_water_EM_option4.csv
+│   └── summary_statistics_EM_option4.txt
 ├── plots/                       # Generated visualization plots
-│   ├── stopping_power_multi_panel.png
-│   └── stopping_power_comparison.png
+│   ├── stopping_power_FTFP_BERT_multi_panel.png
+│   ├── stopping_power_FTFP_BERT_features.png
+│   ├── stopping_power_EM_option4_multi_panel.png
+│   ├── stopping_power_EM_option4_features.png
+│   └── stopping_power_models_comparison.png
 ├── docs/                        # Documentation
 ├── generate_data.py            # Data generation script
 ├── plot_data.py                # Visualization script
@@ -199,10 +225,32 @@ The implementation correctly demonstrates expected physics behavior:
 - ✓ Smooth transition between energy regions
 - ✓ All 7 unit tests passing (100% coverage)
 
+## Physics Models
+
+This implementation supports multiple Geant4 physics models:
+
+### FTFP_BERT
+- **EM Constructor**: G4EmStandardPhysics
+- **Data Source**: ICRU73 parametrization below 2 MeV
+- **Corrections**: Standard shell corrections
+- **Use Case**: General physics and collider applications
+
+### EM_option4
+- **EM Constructor**: G4EmStandardPhysics_option4
+- **Data Source**: ICRU90 parametrization (more accurate)
+- **Corrections**: Enhanced shell, Barkas, Bloch, and density effect corrections
+- **Use Case**: Medical physics and proton therapy
+
+### Model Comparison
+The multi-model comparison plots show:
+- Relative differences between models (typically 1-5%)
+- Greater differences at low energies (<2 MeV) where ICRU data dominates
+- Smaller differences at high energies (>10 MeV) where Bethe-Bloch applies
+
 ## Reference
 
 Based on Geant4 C++ reference implementation (`G4RSP.txt`):
-- Physics Model: FTFP_BERT + G4EmStandardPhysics_option4
+- Physics Models: FTFP_BERT, EM_option4 (G4EmStandardPhysics_option4)
 - Calculator: G4EmCalculator.ComputeTotalDEDX()
 - Energy Range: 0.1-250 MeV for proton therapy applications
 
